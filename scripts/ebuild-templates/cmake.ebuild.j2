@@ -1,0 +1,29 @@
+# Copyright {{ year }} Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+inherit cmake
+
+DESCRIPTION="{{ description }}"
+HOMEPAGE="{{ homepage }}"
+SRC_URI="https://github.com/{{ github }}/archive/refs/tags/{{ tag_prefix }}${PV}.tar.gz -> ${P}.tar.gz"
+
+LICENSE="{{ license }}"
+SLOT="{{ slot }}"
+KEYWORDS="~amd64"
+
+# Uncomment and populate if the package has optional features:
+# IUSE=""
+
+# Uncomment and add runtime/build dependencies:
+# DEPEND=""
+# RDEPEND="${DEPEND}"
+# BDEPEND=""
+
+# src_configure() {
+# 	local mycmakeargs=(
+# 		-DBUILD_TESTING=OFF
+# 	)
+# 	cmake_src_configure
+# }

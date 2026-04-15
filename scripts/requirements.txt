@@ -1,0 +1,5 @@
+tomli>=2.0.0; python_version < "3.11"
+jinja2>=3.0.0
+pycargoebuild>=0.9.0
+pkgdev>=0.21.0
+pkgcheck>=0.21.0

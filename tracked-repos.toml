@@ -1,0 +1,120 @@
+# tracked-repos.toml
+# List GitHub repositories to track for new releases.
+# Run `python scripts/track-releases.py` locally, or let GitHub Actions do it daily.
+#
+# Required fields per package:
+#   github       = "owner/repo"
+#   category     = "dev-util"          # Gentoo category
+#   build_system = "cargo"             # cargo | cmake | meson | autotools | python-pep517 | prebuilt
+#   description  = "Short description"
+#   license      = "MIT"              # SPDX license expression
+#
+# Optional fields (all build systems):
+#   name         = "mypackage"         # defaults to the repo name
+#   tag_prefix   = "v"                 # prefix stripped to get version, default "v"
+#   slot         = "0"                 # default "0"
+#   homepage     = "https://..."       # defaults to GitHub URL
+#
+# Extra fields for build_system = "prebuilt":
+#   keywords     = "-* ~amd64 ~arm64"  # KEYWORDS value
+#   restrict     = "bindist mirror strip"
+#   qa_prebuilt  = "opt/mypkg/*"
+#   install_path = "opt/mypkg"         # used in skeleton src_install comment
+#   eclasses     = ["desktop", "xdg"]
+#   rdepend      = ["dev-libs/glib:2", ...]
+#
+#   [[packages.arch_assets]]           # one block per arch; filename uses {PV} as placeholder
+#   arch     = "amd64"
+#   filename = "mypkg-{PV}-x64.tar.xz"
+#
+#   [[packages.arch_assets]]
+#   arch     = "arm64"
+#   filename = "mypkg-{PV}-arm64.tar.xz"
+#
+# How prebuilt versioning works:
+#   - When a new release is detected and an ebuild already exists for a prior version,
+#     the script copies it verbatim to the new version filename.  No content changes
+#     are needed because everything version-specific is expressed via ${PV} in the ebuild.
+#   - On the very first run (no existing ebuild) a skeleton is generated from the
+#     prebuilt template.  You must implement src_install() before it can be installed.
+
+# --- Examples (uncomment and edit) ---
+
+# [[packages]]
+# github = "BurntSushi/ripgrep"
+# category = "sys-apps"
+# name = "ripgrep"
+# build_system = "cargo"
+# description = "A line-oriented search tool that recursively searches directories"
+# license = "MIT Unlicense"
+# tag_prefix = ""
+
+# [[packages]]
+# github = "sharkdp/fd"
+# category = "sys-apps"
+# name = "fd"
+# build_system = "cargo"
+# description = "A simple, fast and user-friendly alternative to find"
+# license = "MIT Apache-2.0"
+
+# [[packages]]
+# github = "nickel-lang/nickel"
+# category = "dev-lang"
+# build_system = "cargo"
+# description = "Better configuration for less"
+# license = "MIT"
+
+# [[packages]]
+# github = "ninja-build/ninja"
+# category = "dev-util"
+# build_system = "cmake"
+# description = "A small build system with a focus on speed"
+# license = "Apache-2.0"
+
+# [[packages]]
+# github = "mesonbuild/meson"
+# category = "dev-util"
+# build_system = "python-pep517"
+# description = "A high performance build system"
+# license = "Apache-2.0"
+
+[[packages]]
+github = "aunetx/deezer-linux"
+category = "media-sound"
+name = "deezer"
+build_system = "prebuilt"
+description = "Deezer music streaming service - Linux port (Electron app)"
+license = "all-rights-reserved"
+keywords = "-* ~amd64 ~arm64"
+restrict = "bindist mirror strip"
+qa_prebuilt = "opt/deezer/*"
+install_path = "opt/deezer"
+eclasses = ["desktop", "xdg"]
+rdepend = [
+    "dev-libs/atk",
+    "dev-libs/expat",
+    "dev-libs/glib:2",
+    "dev-libs/nspr",
+    "dev-libs/nss",
+    "media-libs/alsa-lib",
+    "media-libs/mesa",
+    "net-print/cups",
+    "x11-libs/cairo",
+    "x11-libs/gtk+:3",
+    "x11-libs/libX11",
+    "x11-libs/libXcomposite",
+    "x11-libs/libXdamage",
+    "x11-libs/libXext",
+    "x11-libs/libXfixes",
+    "x11-libs/libXrandr",
+    "x11-libs/libxcb",
+    "x11-libs/pango",
+]
+
+[[packages.arch_assets]]
+arch = "amd64"
+filename = "deezer-desktop-{PV}-x64.tar.xz"
+
+[[packages.arch_assets]]
+arch = "arm64"
+filename = "deezer-desktop-{PV}-arm64.tar.xz"

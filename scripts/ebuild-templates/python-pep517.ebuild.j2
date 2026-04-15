@@ -1,0 +1,27 @@
+# Copyright {{ year }} Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+# Set the backend used by the project (setuptools | flit_core | hatchling | pdm-backend | poetry-core)
+DISTUTILS_USE_PEP517=setuptools
+PYTHON_COMPAT=( python3_{11,12,13} )
+
+inherit distutils-r1
+
+DESCRIPTION="{{ description }}"
+HOMEPAGE="{{ homepage }}"
+SRC_URI="https://github.com/{{ github }}/archive/refs/tags/{{ tag_prefix }}${PV}.tar.gz -> ${P}.tar.gz"
+
+LICENSE="{{ license }}"
+SLOT="{{ slot }}"
+KEYWORDS="~amd64"
+
+# IUSE=""
+
+# Runtime dependencies:
+# RDEPEND=""
+# Build/test dependencies:
+# BDEPEND=""
+
+# distutils_enable_tests pytest

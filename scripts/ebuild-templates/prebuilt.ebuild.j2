@@ -1,0 +1,63 @@
+# Copyright {{ year }} Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+{% if eclasses %}
+inherit {{ eclasses | join(" ") }}
+{% endif %}
+
+DESCRIPTION="{{ description }}"
+HOMEPAGE="{{ homepage }}"
+SRC_URI="
+{% for a in arch_assets %}	{{ a.arch }}? (
+		https://github.com/{{ github }}/releases/download/{{ tag_prefix }}${PV}/{{ a.filename_ebuild }} ->
+		${P}-{{ a.arch }}.{{ a.ext }} )
+{% endfor %}"
+{% if not arch_assets %}
+SRC_URI="https://github.com/{{ github }}/releases/download/{{ tag_prefix }}${PV}/${P}.tar.gz"
+{% endif %}
+
+LICENSE="{{ license }}"
+SLOT="{{ slot }}"
+KEYWORDS="{{ keywords }}"
+{% if restrict %}
+RESTRICT="{{ restrict }}"
+{% endif %}
+
+{% if rdepend %}
+RDEPEND="
+{% for dep in rdepend %}	{{ dep }}
+{% endfor %}"
+{% endif %}
+
+S="${WORKDIR}"
+{% if qa_prebuilt %}
+QA_PREBUILT="{{ qa_prebuilt }}"
+{% endif %}
+
+src_install() {
+	# TODO: implement install logic for {{ name }}.
+	# After src_unpack the prebuilt files land in ${WORKDIR}.
+	#
+	# Typical Electron app pattern:
+	#
+	# dodir /{{ install_path }}
+	# cp -a "${WORKDIR}/app/." "${ED}/{{ install_path }}/" || die
+	# make_wrapper {{ name }} "/{{ install_path }}/{{ name }}-desktop"
+	#
+	# For a .desktop file and icon bundled under resources/:
+	# local desktop_src="${WORKDIR}/app/resources/app.desktop"
+	# if [[ -f "${desktop_src}" ]]; then
+	#     sed -e 's|^Exec=.*|Exec=/{{ install_path }}/{{ name }}-desktop %U|' \
+	#         "${desktop_src}" > "${T}/app.desktop" || die
+	#     domenu "${T}/app.desktop"
+	# fi
+	# local icon="${WORKDIR}/app/resources/app.svg"
+	# [[ -f "${icon}" ]] && doicon -s scalable "${icon}"
+	die "src_install not implemented — edit {{ name }}-\${PV}.ebuild"
+}
+{% if "xdg" in eclasses %}
+
+pkg_postinst() { xdg_pkg_postinst; }
+pkg_postrm()   { xdg_pkg_postrm; }
+{% endif %}

@@ -1,0 +1,49 @@
+name: Update Ebuilds
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Daily at 06:00 UTC
+  workflow_dispatch:        # Also allow manual runs from the Actions tab
+
+permissions:
+  contents: write           # Needed to push new ebuilds back to the repo
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout overlay
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: pip-
+
+      - name: Install tools
+        run: pip install -r scripts/requirements.txt
+
+      - name: Check for new releases and generate ebuilds
+        run: python scripts/track-releases.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push new ebuilds
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No new ebuilds — nothing to commit."
+          else
+            git commit -m "chore: auto-update ebuilds [skip ci]"
+            git push
+          fi

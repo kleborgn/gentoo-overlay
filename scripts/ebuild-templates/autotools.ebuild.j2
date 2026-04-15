@@ -1,0 +1,29 @@
+# Copyright {{ year }} Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+inherit autotools
+
+DESCRIPTION="{{ description }}"
+HOMEPAGE="{{ homepage }}"
+SRC_URI="https://github.com/{{ github }}/archive/refs/tags/{{ tag_prefix }}${PV}.tar.gz -> ${P}.tar.gz"
+
+LICENSE="{{ license }}"
+SLOT="{{ slot }}"
+KEYWORDS="~amd64"
+
+# IUSE=""
+# DEPEND=""
+# RDEPEND="${DEPEND}"
+# BDEPEND=""
+
+src_prepare() {
+	default
+	eautoreconf
+}
+
+# src_configure() {
+# 	econf \
+# 		--disable-static
+# }
