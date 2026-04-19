@@ -15,6 +15,7 @@ import re
 import sys
 import json
 import shutil
+import hashlib
 import tarfile
 import tempfile
 import subprocess
@@ -290,18 +291,76 @@ TEMPLATE_MAP = {
 # Manifest
 # ---------------------------------------------------------------------------
 
-def run_manifest(category_pkg: str) -> None:
-    print(f"  Running pkgdev manifest {category_pkg} ...")
-    result = subprocess.run(
-        ["pkgdev", "manifest", category_pkg],
-        cwd=str(OVERLAY_ROOT),
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        print(f"  WARNING: pkgdev manifest failed:\n{result.stderr}", file=sys.stderr)
-    else:
-        print("  Manifest updated.")
+# ---------------------------------------------------------------------------
+# Manifest — pure Python, no portage tools needed
+# ---------------------------------------------------------------------------
+
+def _checksums(path: Path) -> tuple[int, str, str]:
+    """Return (size, blake2b_hex, sha512_hex) for a file."""
+    h_b2 = hashlib.blake2b()
+    h_sha512 = hashlib.sha512()
+    size = 0
+    with open(path, "rb") as f:
+        while chunk := f.read(65536):
+            h_b2.update(chunk)
+            h_sha512.update(chunk)
+            size += len(chunk)
+    return size, h_b2.hexdigest(), h_sha512.hexdigest()
+
+
+def update_manifest(pkg_dir: Path, new_distfiles: list[tuple[str, str]]) -> None:
+    """
+    Add new distfile entries to the Manifest (preserving existing entries).
+    new_distfiles: list of (manifest_filename, download_url)
+    """
+    manifest_path = pkg_dir / "Manifest"
+
+    # Load existing entries so we don't duplicate or lose them
+    existing: dict[str, str] = {}
+    if manifest_path.exists():
+        for line in manifest_path.read_text().splitlines():
+            parts = line.split()
+            if parts and parts[0] == "DIST":
+                existing[parts[1]] = line
+
+    for filename, url in new_distfiles:
+        if filename in existing:
+            continue
+        print(f"    Fetching {filename} ...")
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            download_file(url, tmp_path)
+            size, b2, sha512 = _checksums(tmp_path)
+            existing[filename] = (
+                f"DIST {filename} {size} BLAKE2B {b2} SHA512 {sha512}"
+            )
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    manifest_path.write_text("\n".join(sorted(existing.values())) + "\n")
+    print(f"  Manifest written ({len(existing)} distfile(s)).")
+
+
+def extract_crate_distfiles(ebuild_content: str) -> list[tuple[str, str]]:
+    """Parse the CRATES variable from a cargo ebuild -> [(filename, url)]."""
+    m = re.search(r'CRATES="\n(.*?)\n"', ebuild_content, re.DOTALL)
+    if not m:
+        return []
+    result = []
+    for line in m.group(1).splitlines():
+        crate = line.strip()
+        if not crate:
+            continue
+        # Split "name-1.2.3" at the last hyphen before a digit-prefixed version
+        parts = re.match(r'^(.+)-(\d+\..+)$', crate)
+        if parts:
+            crate_name, crate_ver = parts.group(1), parts.group(2)
+            result.append((
+                f"{crate}.crate",
+                f"https://crates.io/api/v1/crates/{crate_name}/{crate_ver}/download",
+            ))
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -336,24 +395,34 @@ def process_package(pkg: dict) -> bool:
 
     print(f"  New version {version}! Generating ebuild ...")
 
+    src_tarball_url = f"https://github.com/{repo}/archive/refs/tags/{tag}.tar.gz"
+    src_tarball_name = f"{name}-{version}.tar.gz"
+    distfiles: list[tuple[str, str]] = []
+
     if build_system == "cargo":
-        tarball_url = (
-            f"https://github.com/{repo}/archive/refs/tags/{tag}.tar.gz"
-        )
         with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
             tmp_path = Path(tmp.name)
         try:
             print("  Downloading source tarball ...")
-            download_file(tarball_url, tmp_path)
+            download_file(src_tarball_url, tmp_path)
             content = generate_cargo_ebuild(pkg, version, tmp_path)
         finally:
             tmp_path.unlink(missing_ok=True)
+        distfiles.append((src_tarball_name, src_tarball_url))
+        distfiles.extend(extract_crate_distfiles(content))
 
     elif build_system == "prebuilt":
         content = generate_prebuilt_ebuild(pkg, version)
+        for asset in pkg.get("arch_assets", []):
+            orig = asset["filename"].replace("{PV}", version)
+            ext = _asset_ext(orig)
+            manifest_name = f"{name}-{version}-{asset['arch']}.{ext}"
+            asset_url = f"https://github.com/{repo}/releases/download/{tag}/{orig}"
+            distfiles.append((manifest_name, asset_url))
 
     elif build_system in TEMPLATE_MAP:
         content = generate_template_ebuild(pkg, TEMPLATE_MAP[build_system])
+        distfiles.append((src_tarball_name, src_tarball_url))
 
     else:
         print(f"  ERROR: Unknown build_system '{build_system}'", file=sys.stderr)
@@ -365,7 +434,8 @@ def process_package(pkg: dict) -> bool:
     ebuild_path.write_text(content)
     print(f"  Wrote {ebuild_path.relative_to(OVERLAY_ROOT)}")
 
-    run_manifest(f"{category}/{name}")
+    print("  Generating Manifest ...")
+    update_manifest(pkg_dir, distfiles)
     return True
 
 
